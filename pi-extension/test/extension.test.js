@@ -93,7 +93,7 @@ test("session_start restores latest persisted mode", async () => withTempConfig(
   assert.ok(result.systemPrompt.includes("lite"));
 }));
 
-test("skill alias commands delegate to Pi skill commands", async () => {
+test("skill alias commands send expanded skill content", async () => {
   const { commands, sentUserMessages } = createPiHarness();
   const ctx = createCommandContext();
 
@@ -102,12 +102,14 @@ test("skill alias commands delegate to Pi skill commands", async () => {
   await commands.get("ponytail-debt").handler("", ctx);
   await commands.get("ponytail-help").handler("", ctx);
 
-  assert.deepEqual(sentUserMessages.map((entry) => entry.text), [
-    "/skill:ponytail-review",
-    "/skill:ponytail-audit",
-    "/skill:ponytail-debt",
-    "/skill:ponytail-help",
+  assert.deepEqual(sentUserMessages.map((entry) => entry.options), [undefined, undefined, undefined, undefined]);
+  assert.deepEqual(sentUserMessages.map((entry) => entry.text.match(/^<skill name="([^"]+)"/)?.[1]), [
+    "ponytail-review",
+    "ponytail-audit",
+    "ponytail-debt",
+    "ponytail-help",
   ]);
+  assert.ok(sentUserMessages.at(-1).text.includes("# Ponytail Help"));
 });
 
 test("normal mode disables persistent instructions", async () => withTempConfig(async () => {

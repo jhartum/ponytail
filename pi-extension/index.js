@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const {
@@ -65,9 +68,26 @@ export default function ponytailExtension(pi) {
     ctx?.ui?.notify?.(`Ponytail mode set to ${normalized}.`, "info");
   };
 
-  const sendAlias = (skillName, args, ctx) => {
+  const stripFrontmatter = (content) => content.replace(/^---\s*\r?\n[\s\S]*?\r?\n---\s*/, "").trim();
+
+  const buildSkillMessage = (skillName, args) => {
+    const skillUrl = new URL(`../skills/${skillName}/SKILL.md`, import.meta.url);
+    const skillPath = fileURLToPath(skillUrl);
+    const content = readFileSync(skillUrl, "utf8");
+    const body = stripFrontmatter(content);
+    const skillBlock = `<skill name="${skillName}" location="${skillPath}">\nReferences are relative to ${dirname(skillPath)}.\n\n${body}\n</skill>`;
     const normalized = String(args || "").trim();
-    const message = normalized ? `${skillName} ${normalized}` : skillName;
+    return normalized ? `${skillBlock}\n\n${normalized}` : skillBlock;
+  };
+
+  const sendSkill = (skillName, args, ctx) => {
+    let message;
+    try {
+      message = buildSkillMessage(skillName, args);
+    } catch (error) {
+      ctx?.ui?.notify?.(`Failed to load ${skillName}: ${error instanceof Error ? error.message : String(error)}`, "error");
+      return;
+    }
 
     if (ctx?.isIdle?.() === false) {
       pi.sendUserMessage(message, { deliverAs: "followUp" });
@@ -111,22 +131,22 @@ export default function ponytailExtension(pi) {
 
   pi.registerCommand("ponytail-review", {
     description: "Run /skill:ponytail-review",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-review", "", ctx),
+    handler: (args, ctx) => sendSkill("ponytail-review", args, ctx),
   });
 
   pi.registerCommand("ponytail-audit", {
     description: "Run /skill:ponytail-audit",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-audit", "", ctx),
+    handler: (args, ctx) => sendSkill("ponytail-audit", args, ctx),
   });
 
   pi.registerCommand("ponytail-debt", {
     description: "Run /skill:ponytail-debt",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-debt", "", ctx),
+    handler: (args, ctx) => sendSkill("ponytail-debt", args, ctx),
   });
 
   pi.registerCommand("ponytail-help", {
     description: "Run /skill:ponytail-help",
-    handler: (_args, ctx) => sendAlias("/skill:ponytail-help", "", ctx),
+    handler: (args, ctx) => sendSkill("ponytail-help", args, ctx),
   });
 
   pi.on("input", async (event) => {
