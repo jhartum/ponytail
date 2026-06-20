@@ -10,6 +10,7 @@ const {
   normalizeMode,
   normalizeConfigMode,
   normalizePersistedMode,
+  isDeactivationCommand,
   writeDefaultMode,
 } = require("../hooks/ponytail-config.js");
 const { getPonytailInstructions, filterSkillBodyForMode } = require("../hooks/ponytail-instructions.js");
@@ -139,6 +140,11 @@ export default function ponytailExtension(pi) {
     handler: (args, ctx) => sendSkill("ponytail-audit", args, ctx),
   });
 
+  pi.registerCommand("ponytail-gain", {
+    description: "Run /skill:ponytail-gain",
+    handler: (_args, ctx) => sendAlias("/skill:ponytail-gain", "", ctx),
+  });
+
   pi.registerCommand("ponytail-debt", {
     description: "Run /skill:ponytail-debt",
     handler: (args, ctx) => sendSkill("ponytail-debt", args, ctx),
@@ -153,7 +159,7 @@ export default function ponytailExtension(pi) {
     if (event?.source === "extension") return;
 
     const text = String(event?.text || "");
-    if (currentMode !== "off" && /\b(stop ponytail|normal mode)\b/i.test(text)) {
+    if (currentMode !== "off" && isDeactivationCommand(text)) {
       setMode("off");
     }
   });
